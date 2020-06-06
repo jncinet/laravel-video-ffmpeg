@@ -1,0 +1,30 @@
+{
+  "name": "jncinet/qihucms-ffmpeg",
+  "description": "qihucms video process.",
+  "keywords": [
+    "laravel",
+    "qihucms",
+    "ffmpeg"
+  ],
+  "homepage": "https://www.qihucms.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "zhangye",
+      "email": "y@qilephp.com"
+    }
+  ],
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "Qihucms\\MediaProcessing\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Qihucms\\MediaProcessing\\MediaProcessingServiceProvider"
+      ]
+    }
+  }
+}
