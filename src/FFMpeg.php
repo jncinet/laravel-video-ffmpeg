@@ -40,7 +40,7 @@ class FFMpeg
 
             foreach ($file as $value) {
                 if (Storage::exists($value)) {
-                    $fileCommand .= '-i ' . ($this->isLocal() ? public_path('storage/' . $value) : Storage::url($value));
+                    $fileCommand .= ' -i ' . ($this->isLocal() ? public_path('storage/' . $value) : Storage::url($value));
                 } else {
                     return [
                         'code' => 101,
@@ -53,7 +53,7 @@ class FFMpeg
             return $fileCommand;
         } else {
             if (Storage::exists($file)) {
-                return '-i ' . ($this->isLocal() ? public_path('storage/' . $file) : Storage::url($file));
+                return ' -i ' . ($this->isLocal() ? public_path('storage/' . $file) : Storage::url($file));
             } else {
                 return [
                     'code' => 101,
@@ -89,11 +89,12 @@ class FFMpeg
      * @param string $path 输出路径
      * @param string $resource 资源路径
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     protected function processed($path, $resource)
     {
         if (!$this->isLocal()) {
-            $result = Storage::put($path, $resource)
+            $result = Storage::put($path, Storage::drive('public')->get($resource))
                 ? true
                 : [
                     'code' => 103,
@@ -123,8 +124,9 @@ class FFMpeg
      * @param string $command 命令
      * @param int $thread 线程数
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    protected function processing($inputFile, $outputFile, $options = ' ', $isSend = false, $command = '', $thread = 0)
+    protected function processing($inputFile, $outputFile, $options = ' ', $isSend = false, $command = '', $thread = 4)
     {
         // 验证输入文件，并转换为命令
         $input = $this->inputFile($inputFile);
@@ -162,7 +164,6 @@ class FFMpeg
     {
         $response = [];
         $return_var = 1;
-
         // 执行外部命令
         exec('ffmpeg ' . $strCommand, $response, $return_var);
 
@@ -203,6 +204,7 @@ class FFMpeg
      * @param int $bufSize 码率控制缓冲器
      * @param bool $isSend
      * @return boolean|array
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avThumb(string $inputFile, $outputFile, $vfOptions = ['pad' => ['width' => 540, 'height' => 952], 'scale' => ['width' => 540, 'height' => 952]], $frameRate = 0, $minRate = 1000, $maxRate = 2000, $bufSize = 1000, $isSend = true, $thread = 4)
     {
@@ -211,11 +213,11 @@ class FFMpeg
             $options .= '-vf ';
             $options .= '"';
             if (array_key_exists('pad', $vfOptions)) {
-                $options .= 'pad=' . $vfOptions['pad']['width'] . ':' . $vfOptions['pad']['height'] . '" ';
+                $options .= 'pad=' . $vfOptions['pad']['width'] . ':' . $vfOptions['pad']['height'];
             }
             if (array_key_exists('scale', $vfOptions)) {
                 $options .= array_key_exists('pad', $vfOptions) ? ',' : '';
-                $options .= 'scale=' . $vfOptions['scale']['width'] . ':' . $vfOptions['scale']['height'] . '" ';
+                $options .= 'scale=' . $vfOptions['scale']['width'] . ':' . $vfOptions['scale']['height'];
             }
             $options .= '" ';
         }
@@ -237,10 +239,11 @@ class FFMpeg
      * @param string $times 截图时间
      * @param bool $isSend
      * @return boolean|array
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function vFrame(string $inputFile, $outputFile, $times = '00:00:00', $isSend = true)
     {
-        return $this->processing($inputFile, $outputFile, ' -r 1 -vframes 1 -an -f mjpeg -y ', $isSend, 'ffmpeg -ss ' . $times . ' ');
+        return $this->processing($inputFile, $outputFile, ' -r 1 -vframes 1 -an -f mjpeg -y ', $isSend, '-ss ' . $times . ' ');
     }
 
     /**
@@ -250,10 +253,11 @@ class FFMpeg
      * @param string $outputFile
      * @param bool $isSend
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avAudio(string $inputFile, $outputFile, $isSend = false)
     {
-        return $this->processing($inputFile, $outputFile, ' -acodec copy -vn -y ', $isSend);
+        return $this->processing($inputFile, $outputFile, ' -vcodec copy -vn -y ', $isSend);
     }
 
     /**
@@ -263,10 +267,11 @@ class FFMpeg
      * @param string $outputFile
      * @param bool $isSend
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avVideo(string $inputFile, $outputFile, $isSend = false)
     {
-        return $this->processing($inputFile, $outputFile, ' -vcodec copy -vn -y ', $isSend);
+        return $this->processing($inputFile, $outputFile, ' -vcodec copy -an -y ', $isSend);
     }
 
     /**
@@ -285,7 +290,7 @@ class FFMpeg
 
         ob_start();
 
-        passthru(sprintf('ffmpeg "%s" 2>&1', $inputFile));
+        passthru(sprintf('ffmpeg %s 2>&1', $inputFile));
 
         $video_info = ob_get_contents();
 
@@ -323,7 +328,7 @@ class FFMpeg
             $ret['play_time'] = $ret['seconds'] + $ret['start']; // 实际播放时间
         }
 
-        $ret['size'] = filesize($file); // 视频文件大小
+        $ret['size'] = filesize(public_path('storage/' . $file)); // 视频文件大小
 
         return $ret;
     }
@@ -338,6 +343,7 @@ class FFMpeg
      * @param int $minHeight
      * @param bool $isSend
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avSize($inputFile, $outputFile, $minWidth = 540, $minHeight = 960, $isSend = false)
     {
@@ -348,65 +354,90 @@ class FFMpeg
      * 合拍：双画面展示
      * ffmpeg -i ~/Downloads/10.mp4 -i ~/Downloads/5.mp4 -filter_complex "[1:v]pad=iw*2:ih[a];[a][0:v]overlay=w" -y ~/Downloads/output_2v.mp4
      *
-     * @param array $inputFile
+     * @param array $inputFile [源视频, 主视频]
      * @param string $outputFile
      * @param bool $isSend
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avSplicing(array $inputFile, $outputFile, $isSend = false)
     {
-        // 主视频
-        $video_a_info = $this->avInfo($inputFile[0]);
         // 源视频
+        $video_a_info = $this->avInfo($inputFile[0]);
+        // 主视频
         $video_b_info = $this->avInfo($inputFile[1]);
         // 如果合成两个视频源尺寸不同，更新第二个视频尺寸为第二视频的尺寸
         if ($video_a_info['width'] != $video_b_info['width'] || $video_a_info['height'] != $video_b_info['height']) {
+            Storage::makeDirectory('tmp_video');
             $tmpFile = 'tmp_video/' . md5($outputFile) . '.mp4';
-            $result = $this->avSize($inputFile[0], $tmpFile, $video_a_info['width'], $video_a_info['height'], false);
+            $result = $this->avSize($inputFile[1], $tmpFile, $video_a_info['width'], $video_a_info['height'], false);
             if ($result === true) {
-                $inputFile[0] = $tmpFile;
+                $inputFile[1] = $tmpFile;
             } else {
                 return $result;
             }
         }
         // 以左侧视频时长截取视频
-        if (isset($video_a_info['seconds']) && $video_a_info['seconds'] > 0) {
-            $times = ' -t ' . $video_a_info['seconds'];
+        if (isset($video_b_info['seconds']) && $video_b_info['seconds'] > 0) {
+            $times = ' -t ' . $video_b_info['seconds'];
         } else {
             $times = '';
         }
         return $this->processing($inputFile, $outputFile, ' -filter_complex "[1:v]pad=iw*2:ih[a];[a][0:v]overlay=w"' . $times . ' -y ', $isSend);
     }
 
-    // 拍同款：提取源视频音频合成到新的视频上，按源视频限制时长
+    /**
+     * 拍同款：提取源视频音频合成到新的视频上，按源视频限制时长
+     *
+     * @param array $inputFile [新视频, 源视频]
+     * @param $outputFile
+     * @param bool $isMute
+     * @param bool $isSend
+     * @param int $thread
+     * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     */
     public function avSameStyle(array $inputFile, $outputFile, $isMute = true, $isSend = true, $thread = 4)
     {
-        // 新视频信息
-        $arr_input_video_info = $this->avInfo($inputFile[0]);
+        // 源视频信息
+        $arr_input_source_info = $this->avInfo($inputFile[1]);
 
         // 提取源视频音频文件
-        $audioFile = 'audio_tmp/' . md5($outputFile) . '.mp3';
+        Storage::makeDirectory('tmp_audio');
+        $audioFile = 'tmp_audio/' . md5($outputFile) . '.mp3';
         $adResult = $this->avAudio($inputFile[1], $audioFile, false);
         if ($adResult === true) {
             if ($isMute) {
-                $videoFile = 'video_tmp/' . md5($outputFile) . '.mp4';
+                Storage::makeDirectory('tmp_video');
+                $videoFile = 'tmp_video/' . md5($outputFile) . '.mp4';
                 $avResult = $this->avVideo($inputFile[0], $videoFile, false);
-                if ($avResult !== true) {
+                if ($avResult == true) {
+                    return $this->processing([$audioFile, $videoFile], $outputFile, ' -c:v copy -t ' . $arr_input_source_info['seconds'] . ' -y ', $isSend, '', $thread);
+                } else {
                     return $avResult;
                 }
             } else {
-                $videoFile = $outputFile;
+                $videoFile = $inputFile[0];
             }
             // 以新视频时长为准合成音视频
-            return $this->processing([$audioFile, $videoFile], $outputFile, ' -t ' . $arr_input_video_info['seconds'] . ' -y ', $isSend, '', $thread);
+            return $this->processing([$videoFile, $audioFile], $outputFile, ' -c:v copy -map 0:v:0 -filter_complex "[0:a][1:a]amerge=inputs=2[aout]" -map "[aout]" -ac 2 -t ' . $arr_input_source_info['seconds'] . ' -y ', $isSend, '', $thread);
         } else {
             // 提取失败
             return $adResult;
         }
     }
 
-    // 短音频循环输入到视频中
-    // ffmpeg -i ~/Downloads/output.mp4 -stream_loop -1 -i ~/Downloads/short_mp3.mp3 -shortest -threads 8 -preset ultrafast ~/Downloads/output1.mp4
+    /**
+     * 短音频循环输入到视频中
+     * ffmpeg -i ~/Downloads/1.mp4 -stream_loop -1 -i ~/Downloads/short_mp3.mp3 -shortest -threads 4 -preset ultrafast ~/Downloads/output1.mp4
+     *
+     * @param array $inputFile [mp4, mp3]
+     * @param $outputFile
+     * @param bool $isSend
+     * @param int $thread
+     * @return array|bool|string
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     */
     public function avBgAudioLoop(array $inputFile, $outputFile, $isSend = true, $thread = 4)
     {
         $input = $this->inputFile($inputFile);
@@ -417,23 +448,30 @@ class FFMpeg
         // 本地存放的路径
         $localOutputFile = $this->outputFile($outputFile);
 
-        $command = 'ffmpeg';
-        $command .= ' -i ' . $inputFile[0] . ' -stream_loop -1';
-        $command .= ' -i ' . $inputFile[1] . ' -shortest';
-        $command .= $thread > 0 ? ' -threads ' . $thread . ' -preset ultrafast ' : '';
-        $command .= ' -y ';
-        $command .= $localOutputFile;
+        // 视频静音
+        Storage::makeDirectory('tmp_video');
+        $videoFile = 'tmp_video/' . md5($outputFile) . '.mp4';
+        $avResult = $this->avVideo($inputFile[0], $videoFile, false);
+        if ($avResult == true) {
+            $command = ' -i ' . public_path('storage/' . $videoFile) . ' -stream_loop -1';
+            $command .= ' -i ' . public_path('storage/' . $inputFile[1]) . ' -shortest';
+            $command .= $thread > 0 ? ' -threads ' . $thread . ' -preset ultrafast ' : '';
+            $command .= ' -y ';
+            $command .= $localOutputFile;
 
-        $result = $this->runCommand($command);
+            $result = $this->runCommand($command);
 
-        // 验证运行结果
-        $processResult = $this->checkProcessResult($result, $outputFile);
+            // 验证运行结果
+            $processResult = $this->checkProcessResult($result, $outputFile);
 
-        if ($processResult !== true) {
-            return $processResult;
+            if ($processResult !== true) {
+                return $processResult;
+            }
+
+            return $isSend ? $this->processed($outputFile, $localOutputFile) : true;
+        } else {
+            return $avResult;
         }
-
-        return $isSend ? $this->processed($outputFile, $localOutputFile) : true;
     }
 
     /**
@@ -445,10 +483,21 @@ class FFMpeg
      * @param $isSend
      * @param int $thread
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avBgAudio(array $inputFile, $outputFile, $isSend = true, $thread = 4)
     {
-        return $this->processing($inputFile, $outputFile, ' -y ', $isSend, '', $thread);
+        $av_info = $this->avInfo($inputFile[1]);
+        // 视频静音
+        Storage::makeDirectory('tmp_video');
+        $videoFile = 'tmp_video/' . md5($outputFile) . '.mp4';
+        $avResult = $this->avVideo($inputFile[1], $videoFile, false);
+        if ($avResult == true) {
+            $inputFile[1] = $videoFile;
+            return $this->processing($inputFile, $outputFile, ' -t ' . $av_info['seconds'] . ' -y ', $isSend, '', $thread);
+        } else {
+            return $avResult;
+        }
     }
 
     /**
@@ -462,20 +511,22 @@ class FFMpeg
      * @param bool $isSend 是否发布
      * @param int $thread 线程数
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avBgAudioForTimes(array $inputFile, $outputFile, $times = 0, $sourceMute = true, $isSend = true, $thread = 4)
     {
         $videoFile = $inputFile[0];
         // 如果需要清除源视频音频
         if ($sourceMute) {
-            $videoFile = 'video_tmp/' . md5($outputFile) . '.mp4';
+            Storage::makeDirectory('tmp_video');
+            $videoFile = 'tmp_video/' . md5($outputFile) . '.mp4';
             // 导出静音视频
             $result = $this->avVideo($inputFile[0], $videoFile, false);
             if ($result !== true) {
                 return $result;
             }
         }
-        return $this->processing([$videoFile, $inputFile[1]], $outputFile, ' -filter_complex "[1]adelay=' . $times . '|' . $times . '[s2]" -map 0:v -map "[s2]" -c:v copy -y ', $isSend, '', $thread);
+        return $this->processing([$videoFile, $inputFile[1]], $outputFile, ' -filter_complex "[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=1[a1];[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=1,adelay=' . $times . '|' . $times . '|' . $times . '[a2];[a1][a2]amix=inputs=2:duration=first[aout]" -map "[aout]" -ac 2 -c:v copy -map 0:v:0 -y ', $isSend, '', $thread);
     }
 
     /**
@@ -492,20 +543,22 @@ class FFMpeg
      * @param bool $isSend
      * @param int $thread
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avConcat(array $inputFile, $outputFile, $vfOption = ['pad' => ['width' => 540, 'height' => 952], 'scale' => ['width' => 540, 'height' => 952]], $frameRate = 0, $minRate = 1000, $maxRate = 2000, $bufSize = 1000, $isSend = true, $thread = 4)
     {
         // 转换视频文件为TS格式，并写入到合成列表中
         $str = '';
+        Storage::makeDirectory('tmp_video');
         foreach ($inputFile as $file) {
             $filename = pathinfo($file, 'PATHINFO_FILENAME') . '.ts';
-            $result = $this->avThumb($file, 'video_tmp/' . $filename, $vfOption, $frameRate, $minRate, $maxRate, $bufSize, false, $thread);
+            $result = $this->avThumb($file, 'tmp_video/' . $filename, $vfOption, $frameRate, $minRate, $maxRate, $bufSize, false, $thread);
             if ($result !== true) {
                 return $result;
             }
             $str .= 'file ' . $filename . "\n";
         }
-        $files = 'video_tmp/files.txt';
+        $files = 'tmp_video/files.txt';
         Storage::drive('public')->put($files, $str);
 
         return $this->processing($files, $outputFile, ' -c:v libx264 -c:a copy -y ', $isSend, ' -f concat ', $thread);
@@ -520,6 +573,7 @@ class FFMpeg
      * @param int $count 视频前$count帧
      * @param bool $isSend
      * @return array|bool
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function avGif($inputFile, $outputFile, $count = 30, $isSend = true)
     {
