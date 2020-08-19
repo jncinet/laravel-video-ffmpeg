@@ -23,10 +23,15 @@ class FFMpeg
      */
     public $compress = ' -c:v libx264 -minrate 966K -bufsize 1500K -maxrate 2000K -preset ultrafast';
 
+    /**
+     * FFMpeg constructor.
+     * @throws \Exception
+     */
     public function __construct()
     {
-        $this->width = config('qihu.video_width', 540);
-        $this->height = config('qihu.video_height', 952);
+        $this->width = cache('ffmpeg_video_width', 540);
+        $this->height = cache('ffmpeg_video_height', 952);
+        $this->inputDuration = cache('ffmpeg_input_duration', 0);
     }
 
     /**
