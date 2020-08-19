@@ -1,10 +1,10 @@
 <?php
 
-namespace Qihucms\MediaProcessing;
+namespace Qihucms\VideoFFMpeg;
 
 use Illuminate\Support\ServiceProvider;
 
-class MediaProcessingServiceProvider extends ServiceProvider
+class VideoFFMpegServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
@@ -13,7 +13,7 @@ class MediaProcessingServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(FFMpeg::class, function () {
+        $this->app->singleton('videoFFMpeg', function () {
             return new FFMpeg();
         });
     }

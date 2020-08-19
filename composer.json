@@ -1,5 +1,5 @@
 {
-  "name": "jncinet/qihucms-ffmpeg",
+  "name": "jncinet/laravel-video-ffmpeg",
   "description": "qihucms video process.",
   "keywords": [
     "laravel",
@@ -17,13 +17,13 @@
   "require": {},
   "autoload": {
     "psr-4": {
-      "Qihucms\\MediaProcessing\\": "src/"
+      "Qihucms\\VideoFFMpeg\\": "src/"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Qihucms\\MediaProcessing\\MediaProcessingServiceProvider"
+        "Qihucms\\VideoFFMpeg\\VideoFFMpegServiceProvider"
       ]
     }
   }
