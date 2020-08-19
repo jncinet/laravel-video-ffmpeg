@@ -4,13 +4,6 @@ namespace Qihucms\VideoFFMpeg;
 
 use Illuminate\Support\Facades\Storage;
 
-/**
- * error code:
- * 100：输入文件不能为空
- * 101：输入文件不存在
- * 102：运行失败
- * 103：发布失败
- */
 class FFMpeg
 {
     protected $globalParameter = '';
@@ -124,7 +117,7 @@ class FFMpeg
         }
 
         // 执行外部命令
-        exec('ffmpeg' . $command. ' 2>&1', $response, $return_var);
+        exec('ffmpeg' . $command . ' 2>&1', $response, $return_var);
 
         $result = array_merge($response, ['return_var' => $return_var]);
 
