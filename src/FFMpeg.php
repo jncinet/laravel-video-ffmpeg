@@ -31,7 +31,7 @@ class FFMpeg
      */
     public function __construct()
     {
-        $this->width = Cache::has('ffmpeg_video_height') ? Cache::get('ffmpeg_video_height', 544) : 544;
+        $this->width = Cache::has('ffmpeg_video_width') ? Cache::get('ffmpeg_video_width', 544) : 544;
         $this->height = Cache::has('ffmpeg_video_height') ? Cache::get('ffmpeg_video_height', 960) : 960;
         $this->inputDuration = Cache::has('ffmpeg_input_duration') ? Cache::get('ffmpeg_input_duration', 0) : 0;
     }
