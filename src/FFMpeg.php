@@ -2,6 +2,7 @@
 
 namespace Qihucms\VideoFFMpeg;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,17 +13,17 @@ class FFMpeg
     protected $inputFile = [];
     protected $outputParameter = [];
     protected $outputFile = [];
-    public $width = 544;
-    public $height = 960;
+    public $width;
+    public $height;
     // 输入文件时长限制
-    public $inputDuration = 0;
+    public $inputDuration;
     /**
      * 压缩视频（输出视频参数）
      * -preset 输出的视频质量，会影响文件的生成速度，有以下几个可用的值：
      * ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
      * @var string
      */
-    public $compress = ' -c:v libx264 -minrate 966K -bufsize 1500K -maxrate 2000K -preset ultrafast';
+    public $compress = ' -c:v libx264 -b:v 1000k -preset ultrafast';
 
     /**
      * FFMpeg constructor.
@@ -30,9 +31,9 @@ class FFMpeg
      */
     public function __construct()
     {
-        $this->width = cache('ffmpeg_video_width', 540);
-        $this->height = cache('ffmpeg_video_height', 952);
-        $this->inputDuration = cache('ffmpeg_input_duration', 0);
+        $this->width = Cache::has('ffmpeg_video_height') ? Cache::get('ffmpeg_video_height', 544) : 544;
+        $this->height = Cache::has('ffmpeg_video_height') ? Cache::get('ffmpeg_video_height', 960) : 960;
+        $this->inputDuration = Cache::has('ffmpeg_input_duration') ? Cache::get('ffmpeg_input_duration', 0) : 0;
     }
 
     /**
