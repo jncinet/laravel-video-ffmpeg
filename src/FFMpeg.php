@@ -13,17 +13,17 @@ class FFMpeg
     protected $inputFile = [];
     protected $outputParameter = [];
     protected $outputFile = [];
-    public $width;
-    public $height;
+    protected $width;
+    protected $height;
     // 输入文件时长限制
-    public $inputDuration;
+    protected $inputDuration;
     /**
      * 压缩视频（输出视频参数）
      * -preset 输出的视频质量，会影响文件的生成速度，有以下几个可用的值：
      * ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
      * @var string
      */
-    public $compress = ' -c:v libx264 -b:v 1000k -preset ultrafast';
+    protected $compress = ' -c:v libx264 -b:v 1000k -preset ultrafast';
 
     /**
      * FFMpeg constructor.
@@ -46,12 +46,12 @@ class FFMpeg
      */
     public function avThumb($video, $saveName)
     {
-        $that = $this->input($video);
+        $that = $this->setInput($video);
         if ($this->inputDuration > 0) {
-            $that = $that->inputParameter('-t ' . $this->inputDuration);
+            $that = $that->setInputParameter('-t ' . $this->inputDuration);
         }
-        return $that->outputParameter('-vf "scale=' . $this->width . ':ih,crop=' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
-            ->output($saveName)
+        return $that->setOutputParameter('-vf "scale=' . $this->width . ':ih,crop=' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
+            ->setOutput($saveName)
             ->thread(4)
             ->overwrite()
             ->runCommand();
@@ -68,10 +68,10 @@ class FFMpeg
      */
     public function vFrame(string $video, string $saveName, $times = '00:00:00')
     {
-        return $this->input($video)
-            ->inputParameter('-ss ' . $times)
-            ->outputParameter('-r 1 -vframes 1 -an -q:v 3 -f mjpeg')
-            ->output($saveName)
+        return $this->setInput($video)
+            ->setInputParameter('-ss ' . $times)
+            ->setOutputParameter('-r 1 -vframes 1 -an -q:v 3 -f mjpeg')
+            ->setOutput($saveName)
             ->thread(4)
             ->overwrite()
             ->runCommand();
@@ -192,7 +192,7 @@ class FFMpeg
      * @param array|string $files
      * @return $this
      */
-    public function input($files)
+    public function setInput($files)
     {
         $files = is_array($files) ? $files : [$files];
         $this->inputFile = array_merge($this->inputFile, $files);
@@ -205,7 +205,7 @@ class FFMpeg
      * @param array|string $parameter
      * @return $this
      */
-    public function inputParameter($parameter)
+    public function setInputParameter($parameter)
     {
         $parameter = is_array($parameter) ? $parameter : [$parameter];
         $this->inputParameter = array_merge($this->inputParameter, $parameter);
@@ -218,7 +218,7 @@ class FFMpeg
      * @param array|string $files
      * @return $this
      */
-    public function output($files)
+    public function setOutput($files)
     {
         $files = is_array($files) ? $files : [$files];
         $this->outputFile = array_merge($this->outputFile, $files);
@@ -231,11 +231,35 @@ class FFMpeg
      * @param array|string $parameter
      * @return $this
      */
-    public function outputParameter($parameter)
+    public function setOutputParameter($parameter)
     {
         $parameter = is_array($parameter) ? $parameter : [$parameter];
         $this->outputParameter = array_merge($this->outputParameter, $parameter);
         return $this;
+    }
+
+    /**
+     * @param int $seconds
+     */
+    public function setInputDuration(int $seconds)
+    {
+        $this->inputDuration = $seconds;
+    }
+
+    /**
+     * @param int $width
+     */
+    public function setWidth(int $width)
+    {
+        $this->width = $width;
+    }
+
+    /**
+     * @param int $height
+     */
+    public function setHeight(int $height)
+    {
+        $this->height = $height;
     }
 
     /**
