@@ -2,6 +2,7 @@
 
 namespace Qihucms\VideoFFMpeg;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FFMpeg
@@ -11,8 +12,8 @@ class FFMpeg
     protected $inputFile = [];
     protected $outputParameter = [];
     protected $outputFile = [];
-    public $width = 540;
-    public $height = 952;
+    public $width = 544;
+    public $height = 960;
     // 输入文件时长限制
     public $inputDuration = 0;
     /**
@@ -48,7 +49,7 @@ class FFMpeg
         if ($this->inputDuration > 0) {
             $that = $that->inputParameter('-t ' . $this->inputDuration);
         }
-        return $that->outputParameter('-vf "pad=' . $this->width . ':' . $this->height . ':0:\'(' . $this->height . '-ih)/2\',scale=' . $this->width . ':' . $this->height . '"' . $this->compress)
+        return $that->outputParameter('-vf "scale=' . $this->width . ':ih,crop=' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
             ->output($saveName)
             ->thread(4)
             ->overwrite()
@@ -95,7 +96,11 @@ class FFMpeg
 
             foreach ($this->inputFile as $k => $file) {
                 if (!$this->checkUrl($file)) {
-                    $file = storage_path('app/public/' . $file);
+                    if (config('filesystems.default') == 'public' || substr($file, -3) === 'txt') {
+                        $file = storage_path('app/public/' . $file);
+                    } else {
+                        $file = Storage::url($file);
+                    }
                 }
                 $strInputCommand .= ' ';
                 // 如果输入文件数和参数数量相等则附加参数
@@ -120,7 +125,7 @@ class FFMpeg
 
             $command = $this->globalParameter . $strInputCommand . $strOutputCommand;
         }
-
+        Log::info('ffmpeg' . $command . ' 2>&1');
         // 执行外部命令
         exec('ffmpeg' . $command . ' 2>&1', $response, $return_var);
 
@@ -129,6 +134,14 @@ class FFMpeg
         if ($return_var == 0) {
             $this->processed();
         }
+
+        // 执行完成后，清除设置
+        $this->globalParameter = '';
+        $this->inputParameter = [];
+        $this->inputFile = [];
+        $this->outputParameter = [];
+        $this->outputFile = [];
+        $this->inputDuration = 0;
 
         return $result;
     }
@@ -233,12 +246,16 @@ class FFMpeg
     public function avInfo($file)
     {
         if (!$this->checkUrl($file)) {
-            $file = storage_path('app/public/' . $file);
+            if (config('filesystems.default') == 'public') {
+                $file = storage_path('app/public/' . $file);
+            } else {
+                $file = Storage::url($file);
+            }
         }
 
         ob_start();
 
-        passthru(sprintf('ffmpeg %s 2>&1', $file));
+        passthru(sprintf('ffmpeg -i %s 2>&1', $file));
 
         $video_info = ob_get_contents();
 
@@ -275,8 +292,6 @@ class FFMpeg
         if (isset($ret['seconds']) && isset($ret['start'])) {
             $ret['play_time'] = $ret['seconds'] + $ret['start']; // 实际播放时间
         }
-
-        $ret['size'] = filesize(public_path('storage/' . $file)); // 视频文件大小
 
         return $ret;
     }
