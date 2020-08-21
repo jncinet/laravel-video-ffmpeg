@@ -303,9 +303,15 @@ class FFMpeg
             $ret['vcodec'] = $matches[1];  // 编码格式
             $ret['vformat'] = $matches[2]; // 视频格式
             $ret['resolution'] = $matches[3]; // 分辨率
-            list($width, $height) = explode('x', $matches[3]);
-            $ret['width'] = (int)$width;
-            $ret['height'] = (int)$height;
+
+            $ret['width'] = 0;
+            $ret['height'] = 0;
+
+            $w_h = explode('x', $matches[3]);
+            if (count($w_h) == 2) {
+                $ret['width'] = (int)$w_h[0];
+                $ret['height'] = (int)$w_h[1];
+            }
         }
 
         // Stream #0:0: Audio: cook (cook / 0x6B6F6F63), 22050 Hz, stereo, fltp, 32 kb/s
