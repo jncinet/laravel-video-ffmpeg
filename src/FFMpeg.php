@@ -3,7 +3,6 @@
 namespace Qihucms\VideoFFMpeg;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FFMpeg
@@ -126,7 +125,6 @@ class FFMpeg
 
             $command = $this->globalParameter . $strInputCommand . $strOutputCommand;
         }
-        Log::info('ffmpeg' . $command . ' 2>&1');
         // 执行外部命令
         exec('ffmpeg' . $command . ' 2>&1', $response, $return_var);
 
