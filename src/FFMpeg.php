@@ -49,7 +49,7 @@ class FFMpeg
         if ($this->inputDuration > 0) {
             $that = $that->setInputParameter('-t ' . $this->inputDuration);
         }
-        return $that->setOutputParameter('-vf "scale=' . $this->width . ':ih,crop=-' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
+        return $that->setOutputParameter('-vf "scale=' . $this->width . ':ih,crop=' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
             ->setOutput($saveName)
             ->thread(4)
             ->overwrite()
