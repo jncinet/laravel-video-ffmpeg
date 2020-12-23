@@ -14,6 +14,7 @@ class FFMpeg
     protected $outputFile = [];
     protected $width;
     protected $height;
+    protected $thread_count;
     // 输入文件时长限制
     protected $inputDuration;
     /**
@@ -22,7 +23,7 @@ class FFMpeg
      * ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
      * @var string
      */
-    protected $compress = ' -c:v libx264 -b:v 1500k -preset superfast';
+    protected $compress;
 
     /**
      * FFMpeg constructor.
@@ -30,9 +31,14 @@ class FFMpeg
      */
     public function __construct()
     {
-        $this->width = Cache::has('ffmpeg_video_width') ? Cache::get('ffmpeg_video_width', 544) : 544;
-        $this->height = Cache::has('ffmpeg_video_height') ? Cache::get('ffmpeg_video_height', 960) : 960;
-        $this->inputDuration = Cache::has('ffmpeg_input_duration') ? Cache::get('ffmpeg_input_duration', 0) : 0;
+        $this->compress = config('qihu.video_compress', '-c:v libx264 -b:v 1500k -preset superfast');
+        if (!empty($this->compress)) {
+            $this->compress = ' ' . $this->compress;
+        }
+        $this->thread_count = config('qihu.video_thread', 2);
+        $this->width = config('qihu.video_width', 544);
+        $this->height = config('qihu.video_height', 960);
+        $this->inputDuration = config('qihu.video_duration', 0);
     }
 
     /**
@@ -51,7 +57,7 @@ class FFMpeg
         }
         return $that->setOutputParameter('-vf "scale=' . $this->width . ':ih,crop=' . $this->width . ':\'min(' . $this->height . ', ih)\',pad=' . $this->width . ':' . $this->height . ':0:-1"' . $this->compress)
             ->setOutput($saveName)
-            ->thread(4)
+            ->thread($this->thread_count)
             ->overwrite()
             ->runCommand();
     }
@@ -71,7 +77,7 @@ class FFMpeg
             ->setInputParameter('-ss ' . $times)
             ->setOutputParameter('-r 1 -vframes 1 -an -q:v 3 -f mjpeg')
             ->setOutput($saveName)
-            ->thread(4)
+            ->thread($this->thread_count)
             ->overwrite()
             ->runCommand();
     }
