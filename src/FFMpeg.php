@@ -22,7 +22,7 @@ class FFMpeg
      * ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
      * @var string
      */
-    protected $compress = ' -c:v libx264 -b:v 1000k -preset ultrafast';
+    protected $compress = ' -c:v libx264 -b:v 1500k -preset superfast';
 
     /**
      * FFMpeg constructor.
